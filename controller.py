@@ -9,9 +9,9 @@ from models import (
 )
 
 class MotorController:
-    def __init__(self, motor_a: Motor, motor_b: Motor) -> None:
-        self.motor_a = motor_a
-        self.motor_b = motor_b
+    def __init__(self, motor_l: Motor, motor_r: Motor) -> None:
+        self.motor_l = motor_l
+        self.motor_r = motor_r
         self.command_handlers = {
             'set_speed': self.handle_set_speed,
             'ramp_to_speed': self.handle_ramp_to_speed,
@@ -20,10 +20,10 @@ class MotorController:
         }
 
     def get_motor(self, name: str) -> Optional[Motor]:
-        if name == 'motor_a':
-            return self.motor_a
-        elif name == 'motor_b':
-            return self.motor_b
+        if name == 'motor_l':
+            return self.motor_l
+        elif name == 'motor_r':
+            return self.motor_r
         return None
 
     async def handle_set_speed(self, motor: Motor, cmd: SetSpeedCommand) -> None:

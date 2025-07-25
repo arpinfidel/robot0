@@ -91,6 +91,15 @@
                 });
                 
                 // Motor control functions
+                const debounce = (func, wait) => {
+                    let timeout;
+                    return function(...args) {
+                        const context = this;
+                        clearTimeout(timeout);
+                        timeout = setTimeout(() => func.apply(context, args), wait);
+                    };
+                };
+                
                 const controlMotor = (motor, command, params = {}) => {
                     socket.send(JSON.stringify({
                         motor: motor,
@@ -99,11 +108,11 @@
                     }));
                 };
                 
-                const stopMotors = () => {
-                    controlMotor('motor_a', 'stop');
-                    controlMotor('motor_b', 'stop');
-                };
-        
+                const stopMotors = debounce(() => {
+                    controlMotor('motor_l', 'stop');
+                    controlMotor('motor_r', 'stop');
+                }, 100);
+                
                 const rampToSpeed = (motor, speed) => {
                     controlMotor(motor, 'ramp_to_speed', {
                         speed,
@@ -111,28 +120,16 @@
                         curve: 'LINEAR'
                     });
                 };
-        
-                const setMotorSpeed = (motor, speed) => {
+                
+                const setMotorSpeed = debounce((motor, speed) => {
                     controlMotor(motor, 'set_speed', { speed });
-                };
+                }, 100);
         
                 // Directional controls
-                document.getElementById('forward').addEventListener('mousedown', () => {
-                    setMotorSpeed('motor_a', 80);
-                    setMotorSpeed('motor_b', 80);
-                });
-                document.getElementById('backward').addEventListener('mousedown', () => {
-                    setMotorSpeed('motor_a', -80);
-                    setMotorSpeed('motor_b', -80);
-                });
-                document.getElementById('left').addEventListener('mousedown', () => {
-                    setMotorSpeed('motor_a', -60);
-                    setMotorSpeed('motor_b', 60);
-                });
-                document.getElementById('right').addEventListener('mousedown', () => {
-                    setMotorSpeed('motor_a', 60);
-                    setMotorSpeed('motor_b', -60);
-                });
+                document.getElementById('forward').addEventListener('mousedown', () => setMotorSpeed('motor_l', 80) || setMotorSpeed('motor_r', 80));
+                document.getElementById('backward').addEventListener('mousedown', () => setMotorSpeed('motor_l', -80) || setMotorSpeed('motor_r', -80));
+                document.getElementById('left').addEventListener('mousedown', () => setMotorSpeed('motor_l', -60) || setMotorSpeed('motor_r', 60));
+                document.getElementById('right').addEventListener('mousedown', () => setMotorSpeed('motor_l', 60) || setMotorSpeed('motor_r', -60));
                 document.getElementById('stop').addEventListener('click', stopMotors);
         
                 // Release buttons when mouse leaves or goes up
@@ -185,8 +182,8 @@
                     leftSpeed = Math.round(leftSpeed * 100);
                     rightSpeed = Math.round(rightSpeed * 100);
         
-                    setMotorSpeed('motor_a', leftSpeed);
-                    setMotorSpeed('motor_b', rightSpeed);
+                    setMotorSpeed('motor_l', leftSpeed);
+                    setMotorSpeed('motor_r', rightSpeed);
                 });
         
                 manager.on('end', () => {

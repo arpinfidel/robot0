@@ -6,26 +6,26 @@ import uvicorn
 import RPi.GPIO as GPIO
 
 # Initialize motors
-motor_a = None
-motor_b = None
+motor_l = None
+motor_r = None
 controller = None
 
 async def lifespan(app: FastAPI):
 	# Startup
-	global motor_a, motor_b, controller
+	global motor_l, motor_r, controller
 	GPIO.setmode(GPIO.BCM)
 	GPIO.setwarnings(False)
 
 	# Initialize motors and controller
-	motor_a = Motor(pin_a=5, pin_b=6, pin_pwm=13)
-	motor_b = Motor(pin_a=16, pin_b=26, pin_pwm=12)
-	controller = MotorController(motor_a, motor_b)
+	motor_l = Motor(pin_a=5, pin_b=6, pin_pwm=13)
+	motor_r = Motor(pin_a=16, pin_b=26, pin_pwm=12)
+	controller = MotorController(motor_l, motor_r)
 	yield
 	# Shutdown
-	if motor_a:
-		motor_a.cleanup()
-	if motor_b:
-		motor_b.cleanup()
+	if motor_l:
+		motor_l.cleanup()
+	if motor_r:
+		motor_r.cleanup()
 	GPIO.cleanup()
 
 app = FastAPI(lifespan=lifespan)
