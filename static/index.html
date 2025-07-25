@@ -57,26 +57,55 @@
     <script>
         const socket = new WebSocket(`ws://${window.location.host}/ws`);
         
+        // Motor control functions
+        const controlMotor = (motor, command, params = {}) => {
+            socket.send(JSON.stringify({
+                motor: motor,
+                command: command,
+                ...params
+            }));
+        };
+        
+        const stopMotors = () => {
+            controlMotor('motor_a', 'stop');
+            controlMotor('motor_b', 'stop');
+        };
+
+        const rampToSpeed = (motor, speed) => {
+            controlMotor(motor, 'ramp_to_speed', {
+                speed,
+                duration: 0.2,
+                curve: 'LINEAR'
+            });
+        };
+
+        const setMotorSpeed = (motor, speed) => {
+            controlMotor(motor, 'set_speed', { speed });
+        };
+
+        // Directional controls
         document.getElementById('forward').addEventListener('mousedown', () => {
-            socket.send('forward');
+            setMotorSpeed('motor_a', 80);
+            setMotorSpeed('motor_b', 80);
         });
         document.getElementById('backward').addEventListener('mousedown', () => {
-            socket.send('backward');
+            setMotorSpeed('motor_a', -80);
+            setMotorSpeed('motor_b', -80);
         });
         document.getElementById('left').addEventListener('mousedown', () => {
-            socket.send('left');
+            setMotorSpeed('motor_a', -60);
+            setMotorSpeed('motor_b', 60);
         });
         document.getElementById('right').addEventListener('mousedown', () => {
-            socket.send('right');
+            setMotorSpeed('motor_a', 60);
+            setMotorSpeed('motor_b', -60);
         });
-        document.getElementById('stop').addEventListener('click', () => {
-            socket.send('stop');
-        });
+        document.getElementById('stop').addEventListener('click', stopMotors);
 
         // Release buttons when mouse leaves or goes up
         document.querySelectorAll('button').forEach(btn => {
-            btn.addEventListener('mouseup', () => socket.send('stop'));
-            btn.addEventListener('mouseleave', () => socket.send('stop'));
+            btn.addEventListener('mouseup', stopMotors);
+            btn.addEventListener('mouseleave', stopMotors);
         });
     </script>
 </body>
