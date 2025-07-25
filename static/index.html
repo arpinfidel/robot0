@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Robot Control</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        .control-panel {
+            display: inline-block;
+            margin: 20px;
+        }
+        button {
+            width: 100px;
+            height: 100px;
+            font-size: 24px;
+            margin: 10px;
+            border-radius: 50%;
+            border: none;
+            background: #f0f0f0;
+            cursor: pointer;
+        }
+        button:active {
+            background: #ddd;
+        }
+        #forward {
+            grid-area: forward;
+        }
+        #left {
+            grid-area: left;
+        }
+        #right {
+            grid-area: right;
+        }
+        #backward {
+            grid-area: backward;
+        }
+        #stop {
+            grid-area: stop;
+            background: #ff4444;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>Robot Control Panel</h1>
+    <div class="control-panel">
+        <button id="forward">↑</button><br>
+        <button id="left">←</button>
+        <button id="stop">STOP</button>
+        <button id="right">→</button><br>
+        <button id="backward">↓</button>
+    </div>
+
+    <script>
+        const socket = new WebSocket(`ws://${window.location.host}/ws`);
+        
+        document.getElementById('forward').addEventListener('mousedown', () => {
+            socket.send('forward');
+        });
+        document.getElementById('backward').addEventListener('mousedown', () => {
+            socket.send('backward');
+        });
+        document.getElementById('left').addEventListener('mousedown', () => {
+            socket.send('left');
+        });
+        document.getElementById('right').addEventListener('mousedown', () => {
+            socket.send('right');
+        });
+        document.getElementById('stop').addEventListener('click', () => {
+            socket.send('stop');
+        });
+
+        // Release buttons when mouse leaves or goes up
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('mouseup', () => socket.send('stop'));
+            btn.addEventListener('mouseleave', () => socket.send('stop'));
+        });
+    </script>
+</body>
+</html>
