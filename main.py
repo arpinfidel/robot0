@@ -127,28 +127,27 @@ class Motor:
         self.worker_thread.join()
         self.pwm.stop()
 
-app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# Initialize motors
-motor_a = None
-motor_b = None
-
-@app.on_event("startup")
-async def startup_event():
+async def lifespan(app: FastAPI):
+    # Startup
     global motor_a, motor_b
     GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
     motor_a = Motor(5, 6, 13, MIN_DUTY, MAX_DUTY, KICKSTART_DUTY, KICKSTART_TIME)
     motor_b = Motor(16, 26, 12, MIN_DUTY, MAX_DUTY, KICKSTART_DUTY, KICKSTART_TIME)
-
-@app.on_event("shutdown")
-async def shutdown_event():
+    yield
+    # Shutdown
     if motor_a:
         motor_a.cleanup()
     if motor_b:
         motor_b.cleanup()
     GPIO.cleanup()
+
+app = FastAPI(lifespan=lifespan)
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Initialize motors
+motor_a = None
+motor_b = None
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
