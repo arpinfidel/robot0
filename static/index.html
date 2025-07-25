@@ -1,7 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Robot Control</title>
+    <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -12,6 +17,20 @@
             display: inline-block;
             margin: 20px;
         }
+        #joystick-area {
+            width: 200px;
+            height: 200px;
+            background: #f5f5f5;
+            border-radius: 50%;
+            margin: 20px auto;
+            position: relative;
+            touch-action: none; /* Important for mobile */
+            z-index: 10;
+        }
+
+        <!-- * {
+            outline: 1px solid red; /* Temporary debugging */
+        } -->
         button {
             width: 100px;
             height: 100px;
@@ -46,6 +65,7 @@
 </head>
 <body>
     <h1>Robot Control Panel</h1>
+    <div id="joystick-area"></div>
     <div class="control-panel">
         <button id="forward">↑</button><br>
         <button id="left">←</button>
@@ -55,58 +75,128 @@
     </div>
 
     <script>
-        const socket = new WebSocket(`ws://${window.location.host}/ws`);
+        window.onload = () => {
+            if (new URLSearchParams(location.search).get("debug") === "true") {
+                eruda.init();
+                console.log("Eruda initialized");
+            }
+
+            try {
+                const socket = new WebSocket(`wss://${window.location.host}/ws`);
+                socket.addEventListener('open', () => {
+                    console.log("WebSocket connected");
+                });
+                socket.addEventListener('error', (err) => {
+                    console.error("WebSocket error", err);
+                });
+                
+                // Motor control functions
+                const controlMotor = (motor, command, params = {}) => {
+                    socket.send(JSON.stringify({
+                        motor: motor,
+                        command: command,
+                        ...params
+                    }));
+                };
+                
+                const stopMotors = () => {
+                    controlMotor('motor_a', 'stop');
+                    controlMotor('motor_b', 'stop');
+                };
         
-        // Motor control functions
-        const controlMotor = (motor, command, params = {}) => {
-            socket.send(JSON.stringify({
-                motor: motor,
-                command: command,
-                ...params
-            }));
-        };
+                const rampToSpeed = (motor, speed) => {
+                    controlMotor(motor, 'ramp_to_speed', {
+                        speed,
+                        duration: 0.2,
+                        curve: 'LINEAR'
+                    });
+                };
         
-        const stopMotors = () => {
-            controlMotor('motor_a', 'stop');
-            controlMotor('motor_b', 'stop');
+                const setMotorSpeed = (motor, speed) => {
+                    controlMotor(motor, 'set_speed', { speed });
+                };
+        
+                // Directional controls
+                document.getElementById('forward').addEventListener('mousedown', () => {
+                    setMotorSpeed('motor_a', 80);
+                    setMotorSpeed('motor_b', 80);
+                });
+                document.getElementById('backward').addEventListener('mousedown', () => {
+                    setMotorSpeed('motor_a', -80);
+                    setMotorSpeed('motor_b', -80);
+                });
+                document.getElementById('left').addEventListener('mousedown', () => {
+                    setMotorSpeed('motor_a', -60);
+                    setMotorSpeed('motor_b', 60);
+                });
+                document.getElementById('right').addEventListener('mousedown', () => {
+                    setMotorSpeed('motor_a', 60);
+                    setMotorSpeed('motor_b', -60);
+                });
+                document.getElementById('stop').addEventListener('click', stopMotors);
+        
+                // Release buttons when mouse leaves or goes up
+                document.querySelectorAll('button').forEach(btn => {
+                    btn.addEventListener('mouseup', stopMotors);
+                    btn.addEventListener('mouseleave', stopMotors);
+                });
+        
+                // Joystick control
+                // Try dynamic mode first
+                const manager = nipplejs.create({
+                    zone: document.getElementById('joystick-area'),
+                    mode: 'dynamic',
+                    color: 'blue',
+                    size: 120
+                });
+                console.log("Joystick initialized (dynamic mode)", manager);
+        
+                // Fallback to static mode if dynamic doesn't work
+                function initStaticJoystick() {
+                    return nipplejs.create({
+                        zone: document.getElementById('joystick-area'),
+                        mode: 'static',
+                        position: { left: '50%', top: '50%' },
+                        color: 'blue',
+                        size: 120
+                    });
+                }
+        
+                manager.on('move', (evt, nipple) => {
+                    const x = nipple.vector.x; // -1 (left) to +1 (right)
+                    const y = nipple.vector.y; // -1 (down) to +1 (up)
+        
+                    // Invert Y if needed — common if pushing up gives negative
+                    const forward = y;
+                    const turn = x;
+        
+                    // Arcade drive formula
+                    let leftSpeed = forward + turn;
+                    let rightSpeed = forward - turn;
+        
+                    // Normalize speeds to stay within [-1, 1]
+                    const maxMagnitude = Math.max(Math.abs(leftSpeed), Math.abs(rightSpeed));
+                    if (maxMagnitude > 1) {
+                        leftSpeed /= maxMagnitude;
+                        rightSpeed /= maxMagnitude;
+                    }
+        
+                    // Scale to motor PWM range
+                    leftSpeed = Math.round(leftSpeed * 100);
+                    rightSpeed = Math.round(rightSpeed * 100);
+        
+                    setMotorSpeed('motor_a', leftSpeed);
+                    setMotorSpeed('motor_b', rightSpeed);
+                });
+        
+                manager.on('end', () => {
+                    stopMotors();
+                });
+            }
+            catch (err) {
+                console.error(err)
+            }
         };
-
-        const rampToSpeed = (motor, speed) => {
-            controlMotor(motor, 'ramp_to_speed', {
-                speed,
-                duration: 0.2,
-                curve: 'LINEAR'
-            });
-        };
-
-        const setMotorSpeed = (motor, speed) => {
-            controlMotor(motor, 'set_speed', { speed });
-        };
-
-        // Directional controls
-        document.getElementById('forward').addEventListener('mousedown', () => {
-            setMotorSpeed('motor_a', 80);
-            setMotorSpeed('motor_b', 80);
-        });
-        document.getElementById('backward').addEventListener('mousedown', () => {
-            setMotorSpeed('motor_a', -80);
-            setMotorSpeed('motor_b', -80);
-        });
-        document.getElementById('left').addEventListener('mousedown', () => {
-            setMotorSpeed('motor_a', -60);
-            setMotorSpeed('motor_b', 60);
-        });
-        document.getElementById('right').addEventListener('mousedown', () => {
-            setMotorSpeed('motor_a', 60);
-            setMotorSpeed('motor_b', -60);
-        });
-        document.getElementById('stop').addEventListener('click', stopMotors);
-
-        // Release buttons when mouse leaves or goes up
-        document.querySelectorAll('button').forEach(btn => {
-            btn.addEventListener('mouseup', stopMotors);
-            btn.addEventListener('mouseleave', stopMotors);
-        });
     </script>
 </body>
 </html>
