@@ -8,10 +8,11 @@ from typing import Callable, Dict
 
 # Constants
 MIN_DUTY = 30
-MAX_DUTY = 85
+MAX_DUTY = 100
 DUTY_STEP = 2
-KICKSTART_DUTY = 100
+KICKSTART_DUTY = 65
 KICKSTART_TIME = 0.01  # in seconds
+FREQ = 1000  # PWM frequency in Hz
 
 class AccelerationCurve(Enum):
     LINEAR = auto()
@@ -56,7 +57,7 @@ class Motor:
         GPIO.setup(self.in2, GPIO.OUT)
         GPIO.setup(self.pwm, GPIO.OUT)
 
-        self.pwm = GPIO.PWM(self.pwm, 1000)  # 1kHz frequency
+        self.pwm = GPIO.PWM(self.pwm, FREQ)
         self.pwm.start(0)
 
         # Start command processing thread
