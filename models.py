@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 
 class BaseCommand(BaseModel):
-    motor: str = Field(..., pattern=r'^motor_[ab]$')
+    motor: str = Field(..., pattern=r'^motor_[lr]$')
     command: str
 
 class SetSpeedCommand(BaseCommand):
